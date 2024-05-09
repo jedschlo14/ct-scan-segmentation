@@ -8,6 +8,7 @@ class SubjectsDataset(tio.SubjectsDataset):
     def __init__(self, root):
         _, _, img_files = next(os.walk(os.path.join(root, 'image')))
         _, _, mask_files = next(os.walk(os.path.join(root, 'mask')))
+        
         if set(img_files) != set(mask_files):
             raise ValueError('Image and mask files do not match')
 

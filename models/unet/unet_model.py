@@ -4,13 +4,13 @@ from .unet_parts import *
 from ..PatchModel import PatchModel
 
 class UNet(PatchModel):
-    def __init__(self, device, bilinear=False):
+    def __init__(self, initial_channels, device, bilinear=False):
         super().__init__(patch_size=16, device=device)
         
         self.n_channels = 1
         self.n_classes = 4
         self.bilinear = bilinear
-        self.initial_channels = 16
+        self.initial_channels = initial_channels
         self.inner_channels = [self.initial_channels * 2**i for i in range(5)]
 
         self.inc = (DoubleConv(self.n_channels, self.inner_channels[0])).to(device)

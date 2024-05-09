@@ -24,7 +24,6 @@ class Trainer:
         self.device = device
         self.best_val_loss = float('inf')
         self.counter = 0
-        self.best_model_weights = None
         self.losses = []
 
         self.train_dataloader = PatchLoader(
@@ -35,15 +34,6 @@ class Trainer:
             queue_num_workers=8,
             batch_size=self.batch_size,
         )
-        self.val_dataloader = PatchLoader(
-            train_dataset,
-            patch_size=self.patch_size,
-            queue_max_length=2048,
-            samples_per_volume=2048,
-            queue_num_workers=8,
-            batch_size=self.batch_size,
-        )
-
     
     def evaluate(self):
         size = len(self.val_dataset)
@@ -102,16 +92,31 @@ class Trainer:
             train_loss = loss if train_loss is None else train_loss.add(loss)
 
         with torch.no_grad():            
-            for patches_batch in self.val_dataloader:
-                loss = self.compute_loss(patches_batch)
-                val_loss = loss if val_loss is None else val_loss.add(loss)
+            for subject in self.val_dataset:
 
-        
+                grid_sampler = tio.inference.GridSampler(
+                    subject,
+                    patch_size=self.patch_size,
+                    patch_overlap=0,
+                )
+                patch_loader = torch.utils.data.DataLoader(grid_sampler, batch_size=self.batch_size, shuffle=False)
+
+                for patches_batch in patch_loader:
+                
+                    loss = self.compute_loss(patches_batch)
+                    val_loss = loss if val_loss is None else val_loss.add(loss)
 
         return train_loss.item(), val_loss.item()
 
     
     def train(self, num_epochs, model_name=None, verbal=True):
+
+        if model_name is None:
+            model_name = self.model.__class__.__name__
+        if not os.path.exists(f"data/{model_name}"): 
+            os.makedirs(f"data/{model_name}")
+        weights_path = f"data/{model_name}/weights.pth"
+        losses_path = f"data/{model_name}/losses.pkl"
 
         if num_epochs == -1:
             epoch_iterator = itertools.count()
@@ -124,34 +129,23 @@ class Trainer:
             self.losses.append((train_loss, val_loss))
 
             self.scheduler.step()
-
+            
             if verbal:
                 print(f"Epoch: {epoch_num:>3d}, Train Loss: {train_loss:>7f}, Val Loss: {val_loss:>7f}")
+
+            with open(losses_path, 'wb') as f:
+                pickle.dump(self.losses, f)
 
             if val_loss < self.best_val_loss:
                 self.best_val_loss = val_loss
                 self.counter = 0
-                self.best_model_weights = self.model.state_dict()
+                torch.save(self.model.state_dict(), weights_path)
             else:
                 self.counter += 1
 
-            if self.patience < 0 and self.counter >= self.patience:
+            if self.patience >= 0 and self.counter >= self.patience:
                 print("Early stopping triggered.")
                 break
-
-        if self.best_model_weights is not None:
-
-            if model_name is None:
-                model_name = self.model.__class__.__name__
-
-            if not os.path.exists(f"data/{model_name}"): 
-                os.makedirs(f"data/{model_name}")
-
-            weights_path = f"data/{model_name}/weights.pth"
-            torch.save(self.best_model_weights, weights_path)
             
-            losses_path = f"data/{model_name}losses.pkl"
-            with open(losses_path, 'wb') as f:
-                pickle.dump(self.losses, f)
 
         return self.losses

@@ -43,6 +43,10 @@ def is_args_valid(opt):
     if not is_device_valid(opt.device):
         return False
 
+    if opt.unet_initial_channels <= 0:
+        print("Error: unet_initial_channels must be positive")
+        return False
+
     if opt.batch_size <= 0:
         print("Error: batch_size must be positive")
         return False
@@ -56,8 +60,8 @@ def is_args_valid(opt):
 
 def train(opt):
     torch.manual_seed(0)
-    train_dataset = SubjectsDataset(root='dataset/train')
-    val_dataset = SubjectsDataset(root='dataset/val')
+    train_dataset = SubjectsDataset(root='dataset/equal_dim_train')
+    val_dataset = SubjectsDataset(root='dataset/equal_dim_train')
     device = torch.device(opt.device)
     stats = getDatasetStatistics(train_dataset)
     
@@ -76,9 +80,12 @@ def train(opt):
     val_dataset.set_transform(tio.ZNormalization(masking_method='mask'))
 
     model_class = getattr(sys.modules[__name__], opt.model)
-    model = model_class(device)
+    if opt.model == "UNet":
+        model = model_class(opt.unet_initial_channels, device)
+    else:
+        model = model_class(device)
     loss_fn = torch.nn.CrossEntropyLoss(weight=stats["weight"], reduction="mean").to(device=device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.01)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
     
     trainer = Trainer(
@@ -101,7 +108,8 @@ if __name__ == '__main__':
     parser.add_argument('--device', type=str, default='cuda', help='device')
     parser.add_argument('--model', type=str, default='BaselineModel', help='name of model')
     parser.add_argument('--model_name', type=str, default=None, help='name that weights will be saved to (default is model name)')
-    parser.add_argument('--batch_size', type=int, default=32, help='batch size')
+    parser.add_argument('--unet_initial_channels', type=int, default=64, help='initial channels for unet model')
+    parser.add_argument('--batch_size', type=int, default=256, help='batch size')
     parser.add_argument('--num_epochs', type=int, default=100, help='number of epochs (-1 for unlimited)')
     parser.add_argument('--patience', type=int, default=5, help='patience threshold for early stopping (-1 for no early stopping)')
     parser.add_argument('--verbal', type=bool, default=True, help='determines if log is printed')
