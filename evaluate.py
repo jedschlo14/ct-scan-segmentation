@@ -43,7 +43,7 @@ def evaluate(opt):
     torch.manual_seed(0)
     device = torch.device(opt.device)
     
-    dataset = SubjectsDataset(root=f'datasets/{opt.dataset_path}/test')
+    dataset = SubjectsDataset(root=f'{opt.dataset_path}/test')
     dataset.set_transform(tio.ZNormalization(masking_method=None))
     
     model_class = getattr(sys.modules[__name__], opt.model)
