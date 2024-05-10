@@ -4,16 +4,16 @@ from .unet_parts import *
 from ..PatchModel import PatchModel
 
 class UNet(PatchModel):
-    def __init__(self, initial_channels, device, bilinear=False):
+    def __init__(self, num_classes, initial_channels, device, bilinear=False, model_name=None):
         super().__init__(patch_size=16, device=device)
         
-        self.n_channels = 1
-        self.n_classes = 4
+        self.num_channels = 1
+        self.num_classes = num_classes
         self.bilinear = bilinear
         self.initial_channels = initial_channels
         self.inner_channels = [self.initial_channels * 2**i for i in range(5)]
 
-        self.inc = (DoubleConv(self.n_channels, self.inner_channels[0])).to(device)
+        self.inc = (DoubleConv(self.num_channels, self.inner_channels[0])).to(device)
         self.down1 = (Down(self.inner_channels[0], self.inner_channels[1])).to(device)
         self.down2 = (Down(self.inner_channels[1], self.inner_channels[2])).to(device)
         self.down3 = (Down(self.inner_channels[2], self.inner_channels[3])).to(device)
@@ -23,7 +23,10 @@ class UNet(PatchModel):
         self.up2 = (Up(self.inner_channels[3], self.inner_channels[2] // factor, self.bilinear)).to(device)
         self.up3 = (Up(self.inner_channels[2], self.inner_channels[1] // factor, self.bilinear)).to(device)
         self.up4 = (Up(self.inner_channels[1], self.inner_channels[0], self.bilinear)).to(device)
-        self.outc = (OutConv(self.inner_channels[0], self.n_classes)).to(device)
+        self.outc = (OutConv(self.inner_channels[0], self.num_classes)).to(device)
+
+        self.name = f"{__class__.__name__}_{initial_channels}" if model_name is None else model_name
+    
 
     def forward(self, x):
         x1 = self.inc(x)

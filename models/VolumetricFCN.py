@@ -4,8 +4,8 @@ from .PatchModel import PatchModel
 
 class VolumetricFCN(PatchModel):
 
-    def __init__(self, device, n_class=4):
-        super().__init__(patch_size=32, device=device)
+    def __init__(self, num_classes, device):
+        super().__init__(patch_size=32, device=device, model_name=None)
 
         self.conv1 = self.ConvUnit(1, 64).to(device)
         self.conv2 = self.ConvUnit(64, 128).to(device)
@@ -25,8 +25,11 @@ class VolumetricFCN(PatchModel):
             nn.Dropout3d()
         ).to(device)
 
-        self.score = nn.Conv3d(4096, n_class, kernel_size=1).to(device)
-        self.upscore = nn.ConvTranspose3d(n_class, n_class, kernel_size=32, stride=1, bias=False).to(device)
+        self.score = nn.Conv3d(4096, num_classes, kernel_size=1).to(device)
+        self.upscore = nn.ConvTranspose3d(num_classes, num_classes, kernel_size=32, stride=1, bias=False).to(device)
+
+        self.name = __class__.__name__ if model_name is None else model_name
+    
 
     def ConvUnit(self, in_channels, out_channels):
         return nn.Sequential(

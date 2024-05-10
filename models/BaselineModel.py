@@ -6,24 +6,24 @@ from .PatchModel import PatchModel
 class BaselineModel(PatchModel):
 
     
-    def __init__(self, device):
+    def __init__(self, num_classes, device, model_name=None):
         super().__init__(patch_size=16, device=device)
         self.downsample = nn.Sequential(
-            nn.Conv2d(1, 16, kernel_size=3, stride=1, padding=1),
+            nn.Conv3d(1, 16, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2)
+            nn.MaxPool3d(kernel_size=2)
         ).to(device)
         self.upsample = nn.Sequential(
-            nn.ConvTranspose2d(16, 16, kernel_size=2, stride=2),
+            nn.ConvTranspose3d(16, 16, kernel_size=2, stride=2),
             nn.ReLU(),
-            nn.Conv2d(16, 4, kernel_size=1),
+            nn.Conv3d(16, num_classes, kernel_size=1),
             nn.Softmax(dim=1)
         ).to(device)
+
+        self.name = __class__.__name__ if model_name is None else model_name
     
     
     def forward(self, x):
-        print(x.shape)
-        # x = x.squeeze(
         x = self.downsample(x)
         x = self.upsample(x)
         

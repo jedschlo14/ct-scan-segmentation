@@ -2,37 +2,8 @@ import argparse
 import sys
 import torch
 import torchio as tio
-from utils import getDatasetStatistics, SubjectsDataset, PatchLoader, Trainer
-from models import BaselineModel, VolumetricFCN, UNet, MODELS
-
-
-def is_device_valid(device):
-    if device.lower() == 'cpu':
-        return True
-        
-    elif device.lower() == 'cuda':
-        if not torch.cuda.is_available():
-            print("Error: CUDA is not available.")
-            return False
-            
-    elif device.lower().startswith('cuda:'):
-        device_id = device.lower().replace('cuda:', '')
-        
-        try:
-            device_id = int(device_id)
-            if not (0 <= device_id < torch.cuda.device_count()):
-                print(f"Error: CUDA device index {device_id} is not valid.")
-                return False
-                
-        except ValueError:
-            print("Error: Invalid CUDA device index.")
-            return False
-            
-    else:
-        print("Error: Invalid device string.")
-        return False
-
-    return True
+from utils import getDatasetStatistics, SubjectsDataset, Trainer, is_device_valid
+from models import *
 
 
 def is_args_valid(opt):
@@ -51,6 +22,10 @@ def is_args_valid(opt):
         print("Error: batch_size must be positive")
         return False
 
+    if opt.num_classes <= 1:
+        print("Error: num_classes must be greater than 1")
+        return False
+
     if opt.num_epochs < 0 and opt.patience < 0:
         print("Error: num_epochs or patience must be nonnegative")
         return False
@@ -60,8 +35,8 @@ def is_args_valid(opt):
 
 def train(opt):
     torch.manual_seed(0)
-    train_dataset = SubjectsDataset(root='dataset/equal_dim_train')
-    val_dataset = SubjectsDataset(root='dataset/equal_dim_train')
+    train_dataset = SubjectsDataset(root='dataset/train')
+    val_dataset = SubjectsDataset(root='dataset/val')
     device = torch.device(opt.device)
     stats = getDatasetStatistics(train_dataset)
     
@@ -77,15 +52,16 @@ def train(opt):
     # ]))
     
     train_dataset.set_transform(tio.ZNormalization(masking_method='mask'))
-    val_dataset.set_transform(tio.ZNormalization(masking_method='mask'))
+    val_dataset.set_transform(tio.ZNormalization(masking_method=None))
 
     model_class = getattr(sys.modules[__name__], opt.model)
     if opt.model == "UNet":
-        model = model_class(opt.unet_initial_channels, device)
+        model = model_class(opt.num_classes, opt.unet_initial_channels, device, model_name=opt.model_name)
     else:
-        model = model_class(device)
+        model = model_class(opt.num_classes, device, model_name=opt.model_name)
     loss_fn = torch.nn.CrossEntropyLoss(weight=stats["weight"], reduction="mean").to(device=device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.01)
+    # loss_fn = torch.nn.CrossEntropyLoss().to(device=device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
     
     trainer = Trainer(
@@ -97,10 +73,12 @@ def train(opt):
         scheduler=scheduler,
         patience=opt.patience,
         batch_size=opt.batch_size,
+        num_classes=opt.num_classes,
+        dataset_stats=stats,
         device=device
     )
     
-    trainer.train(num_epochs=opt.num_epochs, model_name=opt.model_name, verbal=opt.verbal)
+    trainer.train(num_epochs=opt.num_epochs, verbal=opt.verbal)
 
 
 if __name__ == '__main__':
@@ -110,6 +88,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_name', type=str, default=None, help='name that weights will be saved to (default is model name)')
     parser.add_argument('--unet_initial_channels', type=int, default=64, help='initial channels for unet model')
     parser.add_argument('--batch_size', type=int, default=256, help='batch size')
+    parser.add_argument('--num_classes', type=int, help='batch size', required=True)
     parser.add_argument('--num_epochs', type=int, default=100, help='number of epochs (-1 for unlimited)')
     parser.add_argument('--patience', type=int, default=5, help='patience threshold for early stopping (-1 for no early stopping)')
     parser.add_argument('--verbal', type=bool, default=True, help='determines if log is printed')

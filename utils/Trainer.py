@@ -6,12 +6,12 @@ import torch.nn.functional as F
 import torchio as tio
 from .utilFunctions import combineFragments
 from .PatchLoader import PatchLoader
-from torchmetrics.segmentation import GeneralizedDiceScore
+
 
 class Trainer:
 
     
-    def __init__(self, model, train_dataset, val_dataset, loss_fn, optimizer, scheduler, patience, batch_size, device):
+    def __init__(self, model, train_dataset, val_dataset, loss_fn, optimizer, scheduler, patience, batch_size, num_classes, dataset_stats, device):
         self.model = model
         self.train_dataset = train_dataset
         self.val_dataset = val_dataset
@@ -21,6 +21,8 @@ class Trainer:
         self.patience = patience
         self.patch_size = self.model.get_patch_size()
         self.batch_size = batch_size
+        self.num_classes = num_classes
+        self.dataset_stats = dataset_stats
         self.device = device
         self.best_val_loss = float('inf')
         self.counter = 0
@@ -33,45 +35,18 @@ class Trainer:
             samples_per_volume=2048,
             queue_num_workers=8,
             batch_size=self.batch_size,
+            dataset_stats = self.dataset_stats
         )
-    
-    def evaluate(self):
-        size = len(self.val_dataset)
-
-        metric = GeneralizedDiceScore(num_classes=4, per_class=True).to(self.device)
-    
-        self.model.eval()
-        total = None
-        
-        with torch.no_grad():
-            for subject in self.val_dataset:
-                pred = self.model.inference(subject, batch_size=256)
-                mask = subject['mask'][tio.DATA].to(device=self.device)
-                mask = combineFragments(mask)
-    
-                # print(pred.shape)
-                # print(mask.shape)
-    
-                output = metric(pred.long(), mask.long())
-    
-                if total is None:
-                    total = output
-                else:
-                    total = total.add(output)
-    
-        
-        output /= size
-        return output
     
     
     def compute_loss(self, patches_batch):
         mask_patches = patches_batch['mask'][tio.DATA].to(dtype=torch.float, device=self.device)
         mask_patches = combineFragments(mask_patches)
-        mask_patches = F.one_hot(mask_patches.squeeze(1).long(), num_classes=4).movedim(-1, 1).float()
+        mask_patches = F.one_hot(mask_patches.squeeze(1).long(), num_classes=self.num_classes).movedim(-1, 1).float()
 
         image_patches = patches_batch['image'][tio.DATA].to(device=self.device)
         preds = self.model(image_patches)
-
+        
         loss = self.loss_fn(preds, mask_patches)
         return loss
 
@@ -80,18 +55,22 @@ class Trainer:
         size = len(self.train_dataloader.dataset)
         self.model.train()
 
-        train_loss = None
-        val_loss = None
+        train_loss = 0.0
+        val_loss = 0.0
 
         for patches_batch in self.train_dataloader:
+            num_patches = patches_batch['image'][tio.DATA].shape[0]
+            
             self.optimizer.zero_grad()
             loss = self.compute_loss(patches_batch)
             loss.backward()
             self.optimizer.step()
 
-            train_loss = loss if train_loss is None else train_loss.add(loss)
+            train_loss += loss.item() / num_patches
 
-        with torch.no_grad():            
+        with torch.no_grad():    
+            self.model.eval()
+            
             for subject in self.val_dataset:
 
                 grid_sampler = tio.inference.GridSampler(
@@ -102,21 +81,21 @@ class Trainer:
                 patch_loader = torch.utils.data.DataLoader(grid_sampler, batch_size=self.batch_size, shuffle=False)
 
                 for patches_batch in patch_loader:
+                    num_patches = patches_batch['image'][tio.DATA].shape[0]
                 
                     loss = self.compute_loss(patches_batch)
-                    val_loss = loss if val_loss is None else val_loss.add(loss)
+                    val_loss += loss.item() / num_patches
 
-        return train_loss.item(), val_loss.item()
+        return train_loss, val_loss
 
     
-    def train(self, num_epochs, model_name=None, verbal=True):
+    def train(self, num_epochs, verbal=True):
 
-        if model_name is None:
-            model_name = self.model.__class__.__name__
-        if not os.path.exists(f"data/{model_name}"): 
-            os.makedirs(f"data/{model_name}")
-        weights_path = f"data/{model_name}/weights.pth"
-        losses_path = f"data/{model_name}/losses.pkl"
+        if not os.path.exists(f"data/{self.model.name}"): 
+            os.makedirs(f"data/{self.model.name}")
+
+        weights_path = f"data/{self.model.name}/weights.pth"
+        losses_path = f"data/{self.model.name}/losses.pkl"
 
         if num_epochs == -1:
             epoch_iterator = itertools.count()
