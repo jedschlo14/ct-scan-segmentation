@@ -4,8 +4,8 @@ from .PatchModel import PatchModel
 
 class VolumetricFCN(PatchModel):
 
-    def __init__(self, num_classes, device):
-        super().__init__(patch_size=32, device=device, model_name=None)
+    def __init__(self, num_classes, device, model_name=None):
+        super().__init__(patch_size=32, device=device)
 
         self.conv1 = self.ConvUnit(1, 64).to(device)
         self.conv2 = self.ConvUnit(64, 128).to(device)

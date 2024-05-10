@@ -23,7 +23,7 @@ def computeDatasetStatistics(dataset):
     count = counts[1][indices].sum()
     total_count = counts[1].sum()
 
-    weight = torch.tensor([total_count / (4 * counts[1][0]),  total_count / (4 * count)])
+    weight = torch.tensor([total_count / (2 * counts[1][0]),  total_count / (2 * count)])
     # weight = torch.tensor([total_count / (4 * class_count) for class_count in [counts[1][0], count_1_10, count_11_20, count_21_30]])
     # weight = torch.tensor([(1 / class_count) for class_count in [counts[1][0], count_1_10, count_11_20, count_21_30]])
     # stats = {'mean': mean, 'std': std, 'weight': weight}

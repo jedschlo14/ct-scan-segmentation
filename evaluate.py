@@ -13,7 +13,7 @@ def is_args_valid(opt):
     if not is_device_valid(opt.device):
         return False
 
-    if not not os.path.exists(f"data/{opt.model_name}/weights.pth"):
+    if not os.path.exists(f"data/{opt.model_name}/weights.pth"):
         print(f"Error: no weights found for {opt.model_name}")
 
     if opt.unet_initial_channels <= 0:
@@ -45,7 +45,7 @@ def evaluate(opt):
         model = model_class(opt.num_classes, device)
 
     model_name = model.__class__.__name__ if opt.model_name is None else opt.model_name
-    model.load_state_dict(torch.load(f"data/{model_name}/weights.pth"))
+    model.load_state_dict(torch.load(f"data/{model_name}/weights.pth", map_location=device))
 
     evaluator = Evaluator(
         model=model,

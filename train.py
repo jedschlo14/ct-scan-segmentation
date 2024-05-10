@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 import torch
 import torchio as tio
@@ -30,13 +31,19 @@ def is_args_valid(opt):
         print("Error: num_epochs or patience must be nonnegative")
         return False
 
+    if opt.resume:
+        if opt.model_name is None:
+            print(f"Error: model_name must be provided if resuming")
+        if not os.path.exists(f"data/{opt.model_name}/weights.pth"):
+            print(f"Error: cannot resume from {opt.model_name}. No weights found for {opt.model_name}")
+
     return True
 
 
 def train(opt):
     torch.manual_seed(0)
-    train_dataset = SubjectsDataset(root='dataset/train')
-    val_dataset = SubjectsDataset(root='dataset/val')
+    train_dataset = SubjectsDataset(root='dataset/easy')
+    val_dataset = SubjectsDataset(root='dataset/easy')
     device = torch.device(opt.device)
     stats = getDatasetStatistics(train_dataset)
     
@@ -59,8 +66,9 @@ def train(opt):
         model = model_class(opt.num_classes, opt.unet_initial_channels, device, model_name=opt.model_name)
     else:
         model = model_class(opt.num_classes, device, model_name=opt.model_name)
-    loss_fn = torch.nn.CrossEntropyLoss(weight=stats["weight"], reduction="mean").to(device=device)
-    # loss_fn = torch.nn.CrossEntropyLoss().to(device=device)
+
+    # loss_fn = torch.nn.CrossEntropyLoss(weight=stats["weight"], reduction="mean").to(device=device)
+    loss_fn = torch.nn.CrossEntropyLoss().to(device=device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=1)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
     
@@ -92,6 +100,8 @@ if __name__ == '__main__':
     parser.add_argument('--num_epochs', type=int, default=100, help='number of epochs (-1 for unlimited)')
     parser.add_argument('--patience', type=int, default=5, help='patience threshold for early stopping (-1 for no early stopping)')
     parser.add_argument('--verbal', type=bool, default=True, help='determines if log is printed')
+    parser.add_argument('--resume', action='store_true')  
+
     opt = parser.parse_args()
 
     if not is_args_valid(opt):
