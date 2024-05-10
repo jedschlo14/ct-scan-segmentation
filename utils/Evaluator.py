@@ -1,6 +1,6 @@
 import torch
 import torchio as tio
-from .utilFunctions import combineFragments
+from .utilFunctions import combine_fragments
 from torchmetrics.segmentation import GeneralizedDiceScore
 
 
@@ -32,7 +32,7 @@ class Evaluator:
             for subject in self.dataset:
                 pred = self.model.inference(subject, batch_size=self.batch_size)
                 mask = subject['mask'][tio.DATA].to(device=self.device)
-                mask = combineFragments(mask)
+                mask = combine_fragments(mask)
 
                 pred = pred.unsqueeze(0).long()
                 mask = mask.unsqueeze(0).long()

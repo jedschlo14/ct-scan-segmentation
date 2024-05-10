@@ -10,6 +10,14 @@ def is_args_valid(opt):
         print(f"Error: {opt.model} is not a valid model, must choose from {MODELS}")
         return False
 
+    if not os.path.exists(opt.dataset_path):
+        print(f"Error: dataset path {opt.dataset_path} not found")
+        return False
+
+    if not os.path.exists(f"{opt.dataset_path}/val"):
+        print(f"Error: training dataset {opt.dataset_path}/val not found")
+        return False
+        
     if not is_device_valid(opt.device):
         return False
 
@@ -35,7 +43,7 @@ def evaluate(opt):
     torch.manual_seed(0)
     device = torch.device(opt.device)
     
-    dataset = SubjectsDataset(root='dataset/easy')
+    dataset = SubjectsDataset(root=f'datasets/{opt.dataset_path}/test')
     dataset.set_transform(tio.ZNormalization(masking_method=None))
     
     model_class = getattr(sys.modules[__name__], opt.model)
@@ -78,6 +86,7 @@ if __name__ == '__main__':
     parser.add_argument('--device', type=str, default='cuda', help='device')
     parser.add_argument('--model', type=str, default='BaselineModel', help='name of model')
     parser.add_argument('--model_name', type=str, default=None, help='name that weights will be loaded from (default is model name)')
+    parser.add_argument('--dataset_path', type=str, help='path to dataset', required=True)
     parser.add_argument('--unet_initial_channels', type=int, default=64, help='initial channels for unet model')
     parser.add_argument('--batch_size', type=int, default=256, help='batch size')
     parser.add_argument('--num_classes', type=int, help='batch size', required=True)

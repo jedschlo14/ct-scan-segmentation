@@ -1,6 +1,5 @@
 import torch
 import torchio as tio
-from .utilFunctions import getDatasetStatistics
 
 
 class PatchLoader(torch.utils.data.DataLoader):

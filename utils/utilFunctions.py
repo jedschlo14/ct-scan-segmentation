@@ -3,7 +3,7 @@ import pickle
 import torch
 
 
-def computeDatasetStatistics(dataset):
+def compute_dataset_statistics(dataset):
     # images = list(map(lambda x: torch.from_numpy(x['image'].numpy()).float(), dataset))
     masks = list(map(lambda x: torch.from_numpy(x['mask'].numpy()).float(), dataset))
     # pixels = torch.cat([tensor.view(-1) for tensor in images])
@@ -32,7 +32,7 @@ def computeDatasetStatistics(dataset):
     return stats
 
 
-def getDatasetStatistics(dataset):
+def get_dataset_statistics(dataset):
 
     if not os.path.exists("data"): 
         os.makedirs("data")
@@ -49,12 +49,9 @@ def getDatasetStatistics(dataset):
     return stats
 
 
-def combineFragments(mask):
+def combine_fragments(mask):
     mask = mask.clone()
     mask[mask > 0] = 1
-    # mask[(mask >= 1) & (mask < 10)] = 1
-    # mask[(mask >= 11) & (mask < 20)] = 2
-    # mask[(mask >= 21) & (mask < 30)] = 3
     return mask
 
 

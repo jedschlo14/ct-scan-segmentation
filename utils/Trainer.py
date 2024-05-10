@@ -4,7 +4,7 @@ import pickle
 import torch
 import torch.nn.functional as F
 import torchio as tio
-from .utilFunctions import combineFragments
+from .utilFunctions import combine_fragments
 from .PatchLoader import PatchLoader
 
 
@@ -31,8 +31,8 @@ class Trainer:
         self.train_dataloader = PatchLoader(
             train_dataset,
             patch_size=self.patch_size,
-            queue_max_length=2048,
-            samples_per_volume=2048,
+            queue_max_length=256,
+            samples_per_volume=64,
             queue_num_workers=8,
             batch_size=self.batch_size,
             dataset_stats = self.dataset_stats
@@ -41,7 +41,7 @@ class Trainer:
     
     def compute_loss(self, patches_batch):
         mask_patches = patches_batch['mask'][tio.DATA].to(dtype=torch.float, device=self.device)
-        mask_patches = combineFragments(mask_patches)
+        mask_patches = combine_fragments(mask_patches)
         mask_patches = F.one_hot(mask_patches.squeeze(1).long(), num_classes=self.num_classes).movedim(-1, 1).float()
 
         image_patches = patches_batch['image'][tio.DATA].to(device=self.device)
@@ -110,7 +110,7 @@ class Trainer:
             self.scheduler.step()
             
             if verbal:
-                print(f"Epoch: {epoch_num:>3d}, Train Loss: {train_loss:>7f}, Val Loss: {val_loss:>7f}")
+                print(f"Epoch: {epoch_num + 1:>3d}, Train Loss: {train_loss:>7f}, Val Loss: {val_loss:>7f}")
 
             with open(losses_path, 'wb') as f:
                 pickle.dump(self.losses, f)
