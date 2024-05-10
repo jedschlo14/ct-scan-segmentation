@@ -54,24 +54,14 @@ def is_args_valid(opt):
 
 def train(opt):
     torch.manual_seed(0)
+    device = torch.device(opt.device)
 
     train_path = f"{opt.dataset_path}/train"
     val_path = f"{opt.dataset_path}/val"
     train_dataset = SubjectsDataset(root=train_path)
     val_dataset = SubjectsDataset(root=val_path)
-    device = torch.device(opt.device)
-    stats = get_dataset_statistics(train_dataset)
     
-    # train_dataset.set_transform(tio.Compose([
-    #     tio.RescaleIntensity((0, 1)),  # Rescale intensities to range [0, 1]
-    #     tio.RandomAffine(scales=(0.9, 1.1), degrees=10, isotropic=False),  # Random affine transformation
-    #     tio.RandomFlip(axes=(0, 1, 2)),  # Randomly flip along axes
-    #     # tio.RandomElasticDeformation(num_control_points=(7, 7, 7), max_displacement=(10, 10, 10)),  # Random elastic deformation
-    #     tio.RandomNoise(std=(0, 0.1)),  # Add random noise
-    #     # tio.RandomBiasField(coefficients=(0, 0.5)),  # Add random bias field
-    #     # tio.RandomMotion(p=0.2),  # Apply random motion artifact
-    #     tio.ZNormalization(masking_method='mask')
-    # ]))
+    stats = get_dataset_statistics(train_dataset)
     
     train_dataset.set_transform(tio.ZNormalization(masking_method='mask'))
     val_dataset.set_transform(tio.ZNormalization(masking_method=None))
