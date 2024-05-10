@@ -43,7 +43,7 @@ def get_dataset_statistics(dataset):
         with open(pickle_path, 'rb') as f:
             stats = pickle.load(f)
     else:
-        stats = computeDatasetStatistics(dataset)
+        stats = compute_dataset_statistics(dataset)
         with open(pickle_path, 'wb') as f:
             pickle.dump(stats, f)
     return stats
