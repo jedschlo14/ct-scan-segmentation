@@ -1,7 +1,10 @@
+import argparse
+import os
 import pickle
+import sys
 import torch
 import torchio as tio
-from utils import SubjectsDataset
+from utils import Evaluator, SubjectsDataset, is_device_valid
 from models import *
 
 
@@ -85,7 +88,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--device', type=str, default='cuda', help='device')
     parser.add_argument('--model', type=str, default='BaselineModel', help='name of model')
-    parser.add_argument('--model_name', type=str, default=None, help='name that weights will be loaded from (default is model name)')
+    parser.add_argument('--model_name', type=str, default=None, help='name that weights will be loaded from', required=True)
     parser.add_argument('--dataset_path', type=str, help='path to dataset', required=True)
     parser.add_argument('--unet_initial_channels', type=int, default=64, help='initial channels for unet model')
     parser.add_argument('--batch_size', type=int, default=256, help='batch size')
