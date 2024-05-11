@@ -73,7 +73,7 @@ def train(opt):
         model = model_class(opt.num_classes, device, model_name=opt.model_name)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
     
     trainer = Trainer(
         model=model,

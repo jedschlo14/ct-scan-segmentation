@@ -32,7 +32,7 @@ class Trainer:
             train_dataset,
             patch_size=self.patch_size,
             queue_max_length=256,
-            samples_per_volume=64,
+            samples_per_volume=16,
             queue_num_workers=8,
             batch_size=self.batch_size,
             dataset_stats = self.dataset_stats
